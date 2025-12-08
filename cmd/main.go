@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"log"
+	"os"
+	"strings"
 
 	"p2p-messenger/internal/network"
 	"p2p-messenger/internal/proto"
@@ -14,8 +18,22 @@ const (
 )
 
 func main() {
-	name := flag.String("name", "saika-m", "peer's name")
+	name := flag.String("name", "", "peer's name")
 	flag.Parse()
+
+	// If name not provided via flag, prompt for it
+	if *name == "" {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter your name: ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatalf("Error reading name: %v", err)
+		}
+		*name = strings.TrimSpace(input)
+		if *name == "" {
+			log.Fatal("Name cannot be empty")
+		}
+	}
 
 	p := proto.NewProto(*name, Port)
 
