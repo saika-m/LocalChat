@@ -32,3 +32,4 @@ When you run the app, it will:
 ## About
 
 My messenger discovers users using UDP, connects to them using websocket to encrypt/decrypt messages uses diffie-hellman algorithm. For ui i used tview.
+
