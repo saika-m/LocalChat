@@ -44,10 +44,10 @@ func (d *Discoverer) startMulticasting() {
 	ticker := time.NewTicker(d.MulticastFrequency)
 	for {
 		<-ticker.C
-		_, err := conn.Write([]byte(fmt.Sprintf("%s:%s:%s:%s",
+		// Minimal metadata: only public key and port (no name for privacy)
+		_, err := conn.Write([]byte(fmt.Sprintf("%s:%s:%s",
 			multicastString,
-			d.Proto.Name,
-			d.Proto.DH.PublicKey,
+			d.Proto.PublicKeyStr,
 			d.Proto.Port)))
 		if err != nil {
 			log.Fatal(err)
@@ -77,16 +77,22 @@ func (d *Discoverer) listenMulticasting() {
 			log.Fatal(err)
 		}
 
+		// Convert public key string to bytes
+		pubKeyBytes := []byte(message.PubKeyStr)
+		if len(pubKeyBytes) != 32 {
+			continue
+		}
+
+		peerID := entity.PeerIDFromPublicKey(pubKeyBytes)
 		peer := &entity.Peer{
-			Name:      message.Name,
-			PubKey:    message.PubKey,
-			PubKeyStr: message.PubKeyStr,
+			PeerID:    peerID,
+			PublicKey: pubKeyBytes,
 			Port:      message.Port,
 			Messages:  make([]*entity.Message, 0),
 			AddrIP:    addr.IP.String(),
 		}
 
-		if peer.PubKeyStr != d.Proto.DH.PublicKey.String() {
+		if message.PubKeyStr != d.Proto.PublicKeyStr {
 			d.Proto.Peers.Add(peer)
 		}
 	}

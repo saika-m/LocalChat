@@ -2,9 +2,7 @@ package network
 
 import (
 	"log"
-	"math/big"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/websocket"
 
@@ -35,37 +33,33 @@ func (l *Listener) chat(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	// Establish Noise Protocol session as responder
+	session, err := crypto.NewResponderSession(l.proto.PrivateKey)
+	if err != nil {
+		return
+	}
+
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
 
-		arr := strings.Split(string(message), ":")
-		if len(arr) != 2 {
-			continue
-		}
-
-		pubKeyStr := arr[0]
-		messageText := arr[1]
-
-		peer, found := l.proto.Peers.Get(pubKeyStr)
-		if !found {
-			continue
-		}
-
-		pubKey := new(big.Int)
-		pubKey, ok := pubKey.SetString(pubKeyStr, 10)
-		if !ok {
-			continue
-		}
-
-		decryptedMessage, err := crypto.DecryptMessage(crypto.GetSecret(pubKey, l.proto.DH), messageText)
+		// Decrypt using Noise Protocol
+		decryptedMessage, err := session.ReadMessage(message)
 		if err != nil {
 			continue
 		}
 
-		peer.AddMessage(decryptedMessage, peer.Name)
+		// Find peer by public key (extracted from handshake)
+		// For now, use a simplified approach - in production, extract peer ID from handshake
+		peerID := crypto.PeerID(l.proto.PublicKey)
+		peer, found := l.proto.Peers.Get(peerID)
+		if !found {
+			continue
+		}
+
+		peer.AddMessage(string(decryptedMessage), peer.PeerID)
 	}
 }
 

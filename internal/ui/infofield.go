@@ -10,10 +10,10 @@ type InformationField struct {
 
 func NewInformationField() *InformationField {
 	view := tview.NewTextView().
-		SetText("♡ " + "https://github.com/saika-m" + " ♡").
+		SetText("♡ " + "Donate Me" + " ♡").
 		SetTextAlign(tview.AlignCenter)
 
-	view.SetTitle("saika-m/p2p-messenger").SetBorder(true)
+	view.SetTitle("Created by xxx Lin").SetBorder(true)
 
 	return &InformationField{
 		View: view,

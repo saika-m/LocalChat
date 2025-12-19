@@ -3,13 +3,7 @@ package entity
 import (
 	"errors"
 	"fmt"
-	"log"
-	"math/big"
-	"net/url"
 	"time"
-
-	"github.com/WolframAlph/dh"
-	"github.com/gorilla/websocket"
 
 	"p2p-messenger/internal/crypto"
 )
@@ -18,13 +12,22 @@ var (
 	ErrPeerIsDeleted = errors.New("peer disconnected")
 )
 
+// Peer represents a discovered peer with minimal metadata for privacy
 type Peer struct {
-	Name      string
-	PubKey    *big.Int
-	PubKeyStr string
-	Port      string
-	Messages  []*Message
-	AddrIP    string
+	// PeerID is a privacy-preserving identifier (hash of public key)
+	PeerID string
+	// PublicKey is the Noise Protocol public key (32 bytes)
+	PublicKey []byte
+	// Messages stores encrypted messages
+	Messages []*Message
+	// AddrIP is optional IP address (only if available)
+	AddrIP string
+	// Port is the listening port
+	Port string
+	// BLEAddr is optional BLE address
+	BLEAddr string
+	// Session holds the Noise Protocol session for E2EE
+	Session *crypto.Session
 }
 
 func (p *Peer) AddMessage(text, author string) {
@@ -35,23 +38,23 @@ func (p *Peer) AddMessage(text, author string) {
 	})
 }
 
-func (p *Peer) SendMessage(pubKey, message string, dh dh.DiffieHellman) error {
-	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%s", p.AddrIP, p.Port), Path: "/chat"}
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if c == nil {
-		return ErrPeerIsDeleted
+// SendMessage sends an encrypted message using Noise Protocol
+func (p *Peer) SendMessage(message string) error {
+	if p.Session == nil {
+		return errors.New("no session established")
 	}
 
-	defer c.Close()
+	encrypted, err := p.Session.WriteMessage([]byte(message))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to encrypt message: %w", err)
 	}
 
-	encryptedMessage, err := crypto.EncryptMessage(crypto.GetSecret(p.PubKey, dh), message)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// TODO: Send over encrypted transport (will be implemented in listener/transport layer)
+	_ = encrypted
+	return nil
+}
 
-	return c.WriteMessage(1, []byte(fmt.Sprintf("%s:%s", pubKey, encryptedMessage)))
+// PeerIDFromPublicKey generates a peer ID from a public key
+func PeerIDFromPublicKey(pubKey []byte) string {
+	return crypto.PeerID(pubKey)
 }

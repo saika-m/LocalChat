@@ -99,16 +99,14 @@ func (app *App) initBindings() {
 
 			message := app.Chat.InputField.GetText()
 			peer := app.CurrentPeer
-			if err := peer.SendMessage(app.Proto.DH.PublicKey.String(),
-				message,
-				app.Proto.DH); err != nil {
-				app.Proto.Peers.Delete(peer.PubKeyStr)
+			if err := peer.SendMessage(message); err != nil {
+				app.Proto.Peers.Delete(peer.PeerID)
 				app.Chat.View.SetTitle("chat")
 				app.Chat.Messages.SetText("")
 				app.CurrentPeer = nil
 				app.UI.SetFocus(app.Sidebar.View)
 			} else {
-				app.CurrentPeer.AddMessage(message, app.Proto.Name)
+				app.CurrentPeer.AddMessage(message, peer.PeerID)
 			}
 
 			app.Chat.InputField.SetText("")
@@ -120,16 +118,21 @@ func (app *App) initBindings() {
 
 func (app *App) renderMessages() {
 	if app.CurrentPeer != nil {
-		app.Chat.RenderMessages(app.CurrentPeer.Messages, app.Proto.Name)
-		app.Chat.View.SetTitle(app.CurrentPeer.Name)
+		app.Chat.RenderMessages(app.CurrentPeer.Messages, app.CurrentPeer.PeerID)
+		// Display shortened peer ID in title
+		title := app.CurrentPeer.PeerID
+		if len(title) > 12 {
+			title = title[:12] + "..."
+		}
+		app.Chat.View.SetTitle(title)
 	}
 }
 
 func (app *App) getCurrentPeer() *entity.Peer {
-	_, pubKey := app.Sidebar.View.GetItemText(
+	_, peerID := app.Sidebar.View.GetItemText(
 		app.Sidebar.View.GetCurrentItem())
 
-	peer, found := app.Proto.Peers.Get(pubKey)
+	peer, found := app.Proto.Peers.Get(peerID)
 	if !found {
 		return nil
 	}

@@ -34,7 +34,12 @@ func (s *Sidebar) Reprint() {
 	s.View.Clear()
 
 	for _, peer := range s.peerRepo.GetPeers() {
+		// Display peer ID (first 8 chars for brevity) instead of name for privacy
+		displayID := peer.PeerID
+		if len(displayID) > 8 {
+			displayID = displayID[:8] + "..."
+		}
 		s.View.
-			AddItem(peer.Name, peer.PubKey.String(), 0, nil)
+			AddItem(displayID, peer.PeerID, 0, nil)
 	}
 }
