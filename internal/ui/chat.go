@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
 	"p2p-messenger/internal/entity"
@@ -28,9 +27,13 @@ func NewChat() *Chat {
 	messages := tview.NewTextView().SetText("").
 		SetDynamicColors(true)
 
-	inputField := tview.NewInputField().SetFieldBackgroundColor(tview.Styles.PrimitiveBackgroundColor).
-		SetDoneFunc(func(key tcell.Key) {})
+	inputField := tview.NewInputField().
+		SetFieldBackgroundColor(tview.Styles.PrimitiveBackgroundColor).
+		SetFieldTextColor(tview.Styles.PrimaryTextColor)
 	inputField.SetBorder(true)
+	inputField.SetAcceptanceFunc(func(textToCheck string, lastChar rune) bool {
+		return true // Accept all input
+	})
 
 	view.
 		AddItem(messages, 0, 14, false).

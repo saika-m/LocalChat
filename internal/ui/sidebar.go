@@ -1,8 +1,12 @@
 package ui
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/rivo/tview"
 
+	"p2p-messenger/internal/entity"
 	"p2p-messenger/internal/repository"
 )
 
@@ -24,22 +28,49 @@ func NewSidebar(peerRepo *repository.PeerRepository) *Sidebar {
 }
 
 func (s *Sidebar) Reprint() {
-	peersCount := len(s.peerRepo.GetPeers())
-	if s.currentPeerCount == peersCount {
-		return
-	}
-
+	peers := s.peerRepo.GetPeers()
+	peersCount := len(peers)
+	
+	// Always reprint to update connection types
 	s.currentPeerCount = peersCount
 
 	s.View.Clear()
 
-	for _, peer := range s.peerRepo.GetPeers() {
+	for _, peer := range peers {
 		// Display peer ID (first 8 chars for brevity) instead of name for privacy
 		displayID := peer.PeerID
 		if len(displayID) > 8 {
 			displayID = displayID[:8] + "..."
 		}
+		
+		// Add connection type indicators
+		connTypes := s.formatConnectionTypes(peer)
+		displayText := fmt.Sprintf("%s %s", displayID, connTypes)
+		
 		s.View.
-			AddItem(displayID, peer.PeerID, 0, nil)
+			AddItem(displayText, peer.PeerID, 0, nil)
 	}
+}
+
+func (s *Sidebar) formatConnectionTypes(peer *entity.Peer) string {
+	if len(peer.ConnectionTypes) == 0 {
+		return ""
+	}
+	
+	var indicators []string
+	for _, ct := range peer.ConnectionTypes {
+		switch ct {
+		case entity.ConnectionBLE:
+			indicators = append(indicators, "[green]●[white]BLE")
+		case entity.ConnectionNAT:
+			indicators = append(indicators, "[yellow]●[white]NAT")
+		case entity.ConnectionInternet:
+			indicators = append(indicators, "[blue]●[white]Internet")
+		}
+	}
+	
+	if len(indicators) > 0 {
+		return fmt.Sprintf("(%s)", strings.Join(indicators, ","))
+	}
+	return ""
 }

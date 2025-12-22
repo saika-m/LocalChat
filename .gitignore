@@ -11,4 +11,6 @@ build/
 *.test
 *.out
 go.work
+
+# Generic
 **.DS_Store

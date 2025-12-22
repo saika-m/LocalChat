@@ -22,17 +22,21 @@ const (
 	mdnsServiceName      = "p2p-chat"
 )
 
+// PeerFoundCallback is called when a peer is discovered
+type PeerFoundCallback func(peerID string, addrs []multiaddr.Multiaddr)
+
 // Manager handles DHT-based peer discovery
 type Manager struct {
-	host   host.Host
-	dht    *dht.IpfsDHT
-	mdns   mdns.Service
-	ctx    context.Context
-	cancel context.CancelFunc
+	host        host.Host
+	dht         *dht.IpfsDHT
+	mdns        mdns.Service
+	ctx         context.Context
+	cancel      context.CancelFunc
+	peerFoundCb PeerFoundCallback
 }
 
 // NewManager creates a new DHT manager
-func NewManager(port int) (*Manager, error) {
+func NewManager(port int, peerFoundCb PeerFoundCallback) (*Manager, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Generate a keypair for libp2p (ed25519 for privacy)
@@ -73,14 +77,19 @@ func NewManager(port int) (*Manager, error) {
 	}
 
 	// Create mDNS service for local discovery
-	mdnsService := mdns.NewMdnsService(h, mdnsServiceName, &peerHandler{host: h})
+	peerHandler := &peerHandler{
+		host:        h,
+		peerFoundCb: peerFoundCb,
+	}
+	mdnsService := mdns.NewMdnsService(h, mdnsServiceName, peerHandler)
 
 	return &Manager{
-		host:   h,
-		dht:    dhtInstance,
-		mdns:   mdnsService,
-		ctx:    ctx,
-		cancel: cancel,
+		host:        h,
+		dht:         dhtInstance,
+		mdns:        mdnsService,
+		ctx:         ctx,
+		cancel:      cancel,
+		peerFoundCb: peerFoundCb,
 	}, nil
 }
 
@@ -143,9 +152,13 @@ func (m *Manager) bootstrapPeriodically() {
 }
 
 type peerHandler struct {
-	host host.Host
+	host        host.Host
+	peerFoundCb PeerFoundCallback
 }
 
 func (h *peerHandler) HandlePeerFound(info peer.AddrInfo) {
 	h.host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
+	if h.peerFoundCb != nil {
+		h.peerFoundCb(info.ID.String(), info.Addrs)
+	}
 }
