@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+
+	// Import os/exec for font-size AppleScript
 	"os"
+	"os/exec"
 	"strings"
 
 	"p2p-messenger/internal/network"
@@ -42,7 +45,15 @@ func main() {
 	}
 	p.SetUsername(username)
 
+	// Launch network manager and set terminal font size via AppleScript
 	runNetworkManager(p)
+	fontCmd := exec.Command("osascript", "-e", `tell application "Terminal" to set font size of window 1 to 14`)
+	if err := fontCmd.Run(); err != nil {
+		log.Printf("Failed to set font size: %v", err)
+	}
+
+	// Resize terminal window to 39 rows × 139 columns
+	fmt.Print("\033[8;39;139t")
 
 	if err := runUI(p); err != nil {
 		log.Fatal(err)
